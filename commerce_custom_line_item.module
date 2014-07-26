@@ -1,0 +1,177 @@
+<?php
+
+/**
+ * @file
+ * Module file for the Commerce Custom Line Item module.
+ */
+
+/**
+ * Implements hook_commerce_line_item_type_info().
+ */
+function commerce_custom_line_item_commerce_line_item_type_info() {
+  return array(
+    'custom' => array(
+      'type' => 'custom',
+      'name' => t('Custom'),
+      'product' => FALSE,
+      'add_form_submit_value' => t('Add'),
+      'callbacks' => array(
+        'title' => 'commerce_custom_line_item_title',
+        'add_form' => 'commerce_custom_line_item_add_form',
+        'add_form_submit' => 'commerce_custom_line_item_add_form_submit',
+      ),
+    ),
+  );
+}
+
+/**
+ * Provide the form for adding the line item via the admin interface.
+ */
+function commerce_custom_line_item_add_form($element, &$form_state) {
+  $form['title'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Title'),
+    '#required' => TRUE,
+  );
+  $form['sku'] = array(
+    '#type' => 'textfield',
+    '#title' => t('SKU'),
+    '#default_value' => 'n/a',
+    '#required' => TRUE,
+  );
+  $form['price'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Price'),
+    '#default_value' => '0.00',
+    '#required' => TRUE,
+  );
+  $form['currency'] = array(
+    '#type' => 'select',
+    '#title' => t('Currency'),
+    '#options' => commerce_currency_code_options_list(),
+    '#default_value' => commerce_default_currency(),
+    '#required' => TRUE,
+  );
+  $form['quantity'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Quantity'),
+    '#default_value' => '1',
+    '#required' => TRUE,
+  );
+  $form['help'] = array(
+    '#markup' => t('You will be able to set unit price and quantity above after adding this line item to the order.'),
+  );
+
+  return $form;
+}
+
+/**
+ * Handle the form submission.
+ *
+ * Largely inspired by line_item_example.module in the commerce_examples
+ * module.
+ */
+function commerce_custom_line_item_add_form_submit($line_item, $element, &$form_state, $form) {
+  // Set initial properties.
+  $line_item->line_item_label = trim($form_state['values']['commerce_line_items']['und']['actions']['sku']);
+  $line_item->data['title'] = $form_state['values']['commerce_line_items']['und']['actions']['title'];
+  $quantity = $form_state['values']['commerce_line_items']['und']['actions']['quantity'];
+  if (!is_numeric($quantity) || trim($quantity) == '') {
+    $quantity = 1;
+  }
+  $line_item->quantity = $quantity;
+
+  // Build the price.
+  $amount = trim($form_state['values']['commerce_line_items']['und']['actions']['price']);
+  $amount = !is_numeric($amount) || empty($amount) ? 0 : $amount;
+  $currency = $form_state['values']['commerce_line_items']['und']['actions']['currency'];
+  $line_item->commerce_unit_price = array(
+    'und' => array(
+      array(
+        'amount' => commerce_currency_decimal_to_amount($amount, $currency),
+        'currency_code' => $currency,
+      ),
+    ),
+  );
+
+  // Wrap the line item and product to easily set field information.
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+
+  if (!is_null($line_item_wrapper->commerce_unit_price->value())) {
+    // Add the price to the components array.
+    if (!commerce_price_component_load($line_item_wrapper->commerce_unit_price->value(), 'commerce_custom_line_item')) {
+      $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add(
+        $line_item_wrapper->commerce_unit_price->value(),
+        'commerce_custom_line_item',
+        $line_item_wrapper->commerce_unit_price->value(),
+        TRUE,
+        FALSE
+      );
+    }
+  }
+}
+
+/**
+ * Return a title for a custom line item.
+ */
+function commerce_custom_line_item_title($line_item) {
+  return $line_item->data['title'];
+}
+
+/**
+ * Alter the default commerce_line_item_table view to allow custom line items.
+ *
+ * By default, the view only allows product line items.
+ */
+function commerce_custom_line_item_views_default_views_alter(&$views) {
+  // Grab the handler for the commerce_line_item_table view's default display.
+  $handler =& $views['commerce_line_item_table']->display['default']->handler;
+
+  // Create an OR group for filters.
+  $handler->display->display_options['filter_groups']['groups'] = array(1 => 'OR');
+
+  // Put the product line item type filter in the OR group.
+  $handler->display->display_options['filters']['product_line_item_type']['group'] = 1;
+
+
+  // Create a filter for custom line items.
+  $handler->display->display_options['filters']['type']['id'] = 'type';
+  $handler->display->display_options['filters']['type']['table'] = 'commerce_line_item';
+  $handler->display->display_options['filters']['type']['field'] = 'type';
+  $handler->display->display_options['filters']['type']['value'] = array(
+    'custom' => 'custom',
+  );
+
+  // Do the same for the commerce_cart_summary view's default display.
+  $handler =& $views['commerce_cart_summary']->display['default']->handler;
+
+  // Create an OR group for filters.
+  $handler->display->display_options['filter_groups']['groups'] = array(1 => 'OR');
+
+  // Put the product line item type filter in the OR group.
+  $handler->display->display_options['filters']['product_line_item_type']['group'] = 1;
+
+
+  // Create a filter for custom line items.
+  $handler->display->display_options['filters']['type']['id'] = 'type';
+  $handler->display->display_options['filters']['type']['table'] = 'commerce_line_item';
+  $handler->display->display_options['filters']['type']['relationship'] = 'commerce_line_items_line_item_id';
+  $handler->display->display_options['filters']['type']['field'] = 'type';
+  $handler->display->display_options['filters']['type']['value'] = array(
+    'custom' => 'custom',
+  );
+  $handler->display->display_options['filters']['type']['group'] = 1;
+}
+
+/**
+ * Implements hook_commerce_price_component_type_info().
+ *
+ * Creates a new price component for custom line items.
+ */
+function commerce_custom_line_item_commerce_price_component_type_info() {
+  return array(
+    'commerce_custom_line_item' => array(
+      'title' => t('Custom'),
+    ),
+  );
+}
