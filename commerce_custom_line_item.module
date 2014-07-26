@@ -124,43 +124,46 @@ function commerce_custom_line_item_title($line_item) {
  * By default, the view only allows product line items.
  */
 function commerce_custom_line_item_views_default_views_alter(&$views) {
-  // Grab the handler for the commerce_line_item_table view's default display.
-  $handler =& $views['commerce_line_item_table']->display['default']->handler;
+  if (!empty($views['commerce_line_item_table'])) {
+    // Grab the handler for the commerce_line_item_table view's default display.
+    $handler =& $views['commerce_line_item_table']->display['default']->handler;
 
-  // Create an OR group for filters.
-  $handler->display->display_options['filter_groups']['groups'] = array(1 => 'OR');
+    // Create an OR group for filters.
+    $handler->display->display_options['filter_groups']['groups'] = array(1 => 'AND', 2 => 'OR');
 
-  // Put the product line item type filter in the OR group.
-  $handler->display->display_options['filters']['product_line_item_type']['group'] = 1;
-
-
-  // Create a filter for custom line items.
-  $handler->display->display_options['filters']['type']['id'] = 'type';
-  $handler->display->display_options['filters']['type']['table'] = 'commerce_line_item';
-  $handler->display->display_options['filters']['type']['field'] = 'type';
-  $handler->display->display_options['filters']['type']['value'] = array(
-    'custom' => 'custom',
-  );
-
-  // Do the same for the commerce_cart_summary view's default display.
-  $handler =& $views['commerce_cart_summary']->display['default']->handler;
-
-  // Create an OR group for filters.
-  $handler->display->display_options['filter_groups']['groups'] = array(1 => 'OR');
-
-  // Put the product line item type filter in the OR group.
-  $handler->display->display_options['filters']['product_line_item_type']['group'] = 1;
+    // Put the product line item type filter in the OR group.
+    $handler->display->display_options['filters']['product_line_item_type']['group'] = 2;
 
 
-  // Create a filter for custom line items.
-  $handler->display->display_options['filters']['type']['id'] = 'type';
-  $handler->display->display_options['filters']['type']['table'] = 'commerce_line_item';
-  $handler->display->display_options['filters']['type']['relationship'] = 'commerce_line_items_line_item_id';
-  $handler->display->display_options['filters']['type']['field'] = 'type';
-  $handler->display->display_options['filters']['type']['value'] = array(
-    'custom' => 'custom',
-  );
-  $handler->display->display_options['filters']['type']['group'] = 1;
+    // Create a filter for custom line items.
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['id'] = 'type';
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['table'] = 'commerce_line_item';
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['field'] = 'type';
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['value'] = array(
+      'custom' => 'custom',
+    );
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['group'] = 2;
+
+    // Do the same for the commerce_cart_summary view's default display.
+    $handler =& $views['commerce_cart_summary']->display['default']->handler;
+
+    // Create an OR group for filters.
+    $handler->display->display_options['filter_groups']['groups'] = array(1 => 'AND', 2 => 'OR');
+
+    // Put the product line item type filter in the OR group.
+    $handler->display->display_options['filters']['product_line_item_type']['group'] = 2;
+
+
+    // Create a filter for custom line items.
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['id'] = 'type';
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['table'] = 'commerce_line_item';
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['relationship'] = 'commerce_line_items_line_item_id';
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['field'] = 'type';
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['value'] = array(
+      'custom' => 'custom',
+    );
+    $handler->display->display_options['filters']['commerce_custom_line_item_type']['group'] = 2;
+  }
 }
 
 /**
